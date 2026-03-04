@@ -63,7 +63,22 @@
     'iframe[src*="facebook.com/plugins"]',
     'iframe[src*="platform.twitter.com"]',
     '[id*="fb-root"]',
-    '[id*="twitter-widget"]'
+    '[id*="twitter-widget"]',
+    // Cryptominers
+    'script[src*="coinhive"]',
+    'script[src*="coin-hive"]',
+    'script[src*="jsecoin"]',
+    'script[src*="crypto-loot"]',
+    'script[src*="cryptoloot"]',
+    'script[src*="webminepool"]',
+    'script[src*="monerominer"]',
+    'script[src*="minero.cc"]',
+    'script[src*="authedmine"]',
+    'script[src*="miner.js"]',
+    'script[src*="webminer"]',
+    'script[src*="minr.pw"]',
+    'script[src*="minero"]',
+    'script[src*="cryptonight"]'
   ];
   
   // Tracker markers - explicit indicators of tracking scripts/pixels

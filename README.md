@@ -9,6 +9,7 @@ A lightweight, open-source ad blocker extension for Firefox. Van Dijk blocks ads
 - **Smart ad detection**: Detects sponsored content badges and removes parent containers
 - **Separate ads and trackers**: Track and display ads vs trackers independently
 - **Social media tracking protection**: Blocks Facebook Pixel, Twitter analytics, LinkedIn Insights, TikTok Pixel, Pinterest tracking, and Reddit tracking
+- **Cryptominer protection**: Blocks cryptocurrency mining scripts (Coinhive, CryptoLoot, JSEcoin, and 20+ others)
 - **Recent blocks viewer**: See exactly what URLs and elements were blocked in real-time
 - **Real-time statistics**: Track blocked ads and trackers per session and total
 - **Lightweight**: Minimal performance impact

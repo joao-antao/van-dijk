@@ -92,11 +92,37 @@ const TRACKER_DOMAINS = new Set([
   'alb.reddit.com',
   'events.reddit.com',
   'redditmedia.com',
-  'i.instagram.com'
+  'i.instagram.com',
+  // Cryptominers
+  'coinhive.com',
+  'coin-hive.com',
+  'jsecoin.com',
+  'minero.cc',
+  'crypto-loot.com',
+  'cryptoloot.pro',
+  'coinerra.com',
+  'papoto.com',
+  'minr.pw',
+  'webminepool.com',
+  'monerominer.rocks',
+  'cloudcoins.co',
+  'kisshentai.net',
+  'kiwifarms.net',
+  'ad-miner.com',
+  'rocks.io',
+  'coinpirate.cf',
+  'crypto.csgocpu.com',
+  'authedmine.com',
+  'party-nngvitbizn.now.sh',
+  'afminer.com',
+  'ppoi.org',
+  'jsccnn.com',
+  'hostingcloud.racing',
+  'miner.pr0gramm.com'
 ]);
 
 // Tracker-related substring patterns
-const TRACKER_SUBSTRINGS = ['analytics', 'track', 'telemetry', 'beacon', 'pixel', 'collect', 'fbevents', 'fbq'];
+const TRACKER_SUBSTRINGS = ['analytics', 'track', 'telemetry', 'beacon', 'pixel', 'collect', 'fbevents', 'fbq', 'coinhive', 'miner', 'crypto-loot', 'webminer'];
 
 // Tracker URL patterns
 const TRACKER_PATTERNS = [
@@ -118,7 +144,21 @@ const TRACKER_PATTERNS = [
   /\/events\.reddit/i,
   /linkedin\.com\/px\//i,
   /pinterest\.com\/ct\//i,
-  /\/conversion/i
+  /\/conversion/i,
+  // Cryptomining patterns
+  /coinhive/i,
+  /coin-hive/i,
+  /jsecoin/i,
+  /crypto-loot/i,
+  /cryptoloot/i,
+  /webminepool/i,
+  /monerominer/i,
+  /authedmine/i,
+  /\/miner\.js/i,
+  /\/webminer/i,
+  /minero\.cc/i,
+  /\/worker\.js.*monero/i,
+  /CoinHive/i
 ];
 
 // Statistics

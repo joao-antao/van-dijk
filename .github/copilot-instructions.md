@@ -18,11 +18,11 @@ Ads and trackers are tracked and displayed separately throughout the extension.
 ### Data Flow
 1. Network request → `background.js` checks URL against ad/tracker lists:
    - **Ads**: `AD_DOMAINS`, `AD_SUBSTRINGS`, `AD_PATTERNS`
-   - **Trackers**: `TRACKER_DOMAINS`, `TRACKER_SUBSTRINGS`, `TRACKER_PATTERNS` (includes social media tracking: Facebook Pixel, Twitter analytics, LinkedIn Insights, TikTok Pixel, Pinterest, Reddit)
+   - **Trackers**: `TRACKER_DOMAINS`, `TRACKER_SUBSTRINGS`, `TRACKER_PATTERNS` (includes social media tracking: Facebook Pixel, Twitter analytics, LinkedIn Insights, TikTok Pixel, Pinterest, Reddit; plus cryptominers: Coinhive, CryptoLoot, JSEcoin, etc.)
    - Categorize as "ad" or "tracker" → cancel if match
 2. Page load → `content.js` queries DOM using two-tier approach for both categories:
    - **AD_MARKERS/TRACKER_MARKERS**: Explicit indicators → remove immediately
-   - **AD_SELECTORS/TRACKER_SELECTORS**: Generic patterns → validate then remove (includes social media tracking scripts and pixels)
+   - **AD_SELECTORS/TRACKER_SELECTORS**: Generic patterns → validate then remove (includes social media tracking scripts, pixels, and cryptomining scripts)
 3. Badge detection → Find "Sponsored"/"Promoted" text → remove parent container
 4. MutationObserver in `content.js` watches for dynamically added content
 5. Stats tracked separately by category (ads vs trackers) and stored in `browser.storage.local`
