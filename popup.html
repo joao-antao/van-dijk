@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Van Dijk Ad Blocker</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Van Dijk</h1>
+      <p class="subtitle">Ad Blocker</p>
+    </div>
+    
+    <div class="stats">
+      <div class="stat-item">
+        <span class="stat-label">Session Blocked</span>
+        <span class="stat-value" id="sessionBlocked">0</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Total Blocked</span>
+        <span class="stat-value" id="totalBlocked">0</span>
+      </div>
+    </div>
+    
+    <div class="details-section">
+      <h2 class="details-header">Blocked by Site</h2>
+      <div id="siteList" class="site-list">
+        <p class="no-data">No sites visited yet</p>
+      </div>
+    </div>
+    
+    <div class="details-section">
+      <h2 class="details-header">Recent Blocks</h2>
+      <div id="recentBlocksList" class="recent-blocks-list">
+        <p class="no-data">No blocks yet</p>
+      </div>
+    </div>
+    
+    <div class="actions">
+      <button id="resetBtn" class="btn">Reset Session Stats</button>
+    </div>
+    
+    <div class="footer">
+      <p class="version">Version 1.0.0</p>
+    </div>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>
