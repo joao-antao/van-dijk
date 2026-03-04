@@ -32,28 +32,61 @@ body {
   font-weight: 300;
 }
 
-.stats {
-  background: rgba(255, 255, 255, 0.15);
+/* Main Stats Section */
+.stats-main {
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   padding: 15px;
   margin-bottom: 15px;
-  backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stat-group {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 12px;
+  border-left: 4px solid;
+}
+
+.stat-group:has(.stat-group-title.ads) {
+  border-left-color: #ff6b6b;
+}
+
+.stat-group:has(.stat-group-title.trackers) {
+  border-left-color: #ffa500;
+}
+
+.stat-group-title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  opacity: 0.95;
+  letter-spacing: 0.5px;
+}
+
+.stat-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
 }
 
 .stat-item {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
-  padding: 10px 0;
-}
-
-.stat-item:not(:last-child) {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
 }
 
 .stat-label {
-  font-size: 14px;
-  opacity: 0.9;
+  font-size: 11px;
+  opacity: 0.85;
+  font-weight: 500;
+  margin-bottom: 4px;
 }
 
 .stat-value {
@@ -140,6 +173,14 @@ body {
   font-weight: 600;
 }
 
+.stat-badge.ads {
+  background: rgba(255, 107, 107, 0.3);
+}
+
+.stat-badge.trackers {
+  background: rgba(255, 165, 0, 0.3);
+}
+
 .no-data {
   text-align: center;
   font-size: 12px;
@@ -179,12 +220,12 @@ body {
   margin-bottom: 0;
 }
 
-.block-item.network {
+.block-item.ad {
   border-left-color: #ff6b6b;
 }
 
-.block-item.dom {
-  border-left-color: #4ecdc4;
+.block-item.tracker {
+  border-left-color: #ffa500;
 }
 
 .block-header {
@@ -208,12 +249,12 @@ body {
   text-transform: uppercase;
 }
 
-.block-type.network {
+.block-type.ad {
   background: rgba(255, 107, 107, 0.3);
 }
 
-.block-type.dom {
-  background: rgba(78, 205, 196, 0.3);
+.block-type.tracker {
+  background: rgba(255, 165, 0, 0.3);
 }
 
 .block-url {

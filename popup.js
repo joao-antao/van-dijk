@@ -5,7 +5,7 @@ let lastStatsHash = '';
 
 // Generate hash of stats to detect changes
 function getStatsHash(stats) {
-  return `${stats.sessionBlocked}-${stats.totalBlocked}-${Object.keys(stats.blockedBySite || {}).length}-${(stats.recentBlocks || []).length}`;
+  return `${stats.sessionBlocked}-${stats.totalBlocked}-${stats.ads.session}-${stats.ads.total}-${stats.trackers.session}-${stats.trackers.total}-${Object.keys(stats.blockedBySite || {}).length}-${(stats.recentBlocks || []).length}`;
 }
 
 // Update statistics display (optimized)
@@ -20,9 +20,11 @@ function updateStats() {
       }
       lastStatsHash = currentHash;
       
-      // Update counters
-      document.getElementById('sessionBlocked').textContent = stats.sessionBlocked.toLocaleString();
-      document.getElementById('totalBlocked').textContent = stats.totalBlocked.toLocaleString();
+      // Update ad/tracker counters
+      document.getElementById('sessionAds').textContent = stats.ads.session.toLocaleString();
+      document.getElementById('totalAds').textContent = stats.ads.total.toLocaleString();
+      document.getElementById('sessionTrackers').textContent = stats.trackers.session.toLocaleString();
+      document.getElementById('totalTrackers').textContent = stats.trackers.total.toLocaleString();
       
       // Update site list
       const siteList = document.getElementById('siteList');
@@ -32,10 +34,10 @@ function updateStats() {
       if (siteEntries.length === 0) {
         siteList.innerHTML = '<p class="no-data">No sites visited yet</p>';
       } else {
-        // Sort by total blocks (network + dom)
+        // Sort by total blocks (ads + trackers)
         siteEntries.sort((a, b) => {
-          const totalA = a[1].network + a[1].dom;
-          const totalB = b[1].network + b[1].dom;
+          const totalA = a[1].ads + a[1].trackers;
+          const totalB = b[1].ads + b[1].trackers;
           return totalB - totalA;
         });
         
@@ -47,8 +49,8 @@ function updateStats() {
           div.innerHTML = `
             <span class="site-name" title="${site}">${site}</span>
             <div class="site-stats">
-              <span class="stat-badge" title="Network blocks">N: ${counts.network}</span>
-              <span class="stat-badge" title="DOM blocks">D: ${counts.dom}</span>
+              <span class="stat-badge ads" title="Ads blocked">${counts.ads}</span>
+              <span class="stat-badge trackers" title="Trackers blocked">${counts.trackers}</span>
             </div>
           `;
           fragment.appendChild(div);
@@ -70,15 +72,16 @@ function updateStats() {
         // Show up to 10 most recent blocks
         recentBlocks.slice(0, 10).forEach(block => {
           const div = document.createElement('div');
-          const method = block.method.toLowerCase();
+          const category = block.category || 'ad';
           const displayUrl = block.url.length > 80 ? block.url.substring(0, 80) + '...' : block.url;
           const count = block.count ? ` (${block.count}x)` : '';
+          const categoryLabel = category === 'ad' ? 'Ad' : 'Tracker';
           
-          div.className = `block-item ${method}`;
+          div.className = `block-item ${category}`;
           div.innerHTML = `
             <div class="block-header">
               <span class="block-site">${block.site}</span>
-              <span class="block-type ${method}">${method}${count}</span>
+              <span class="block-type ${category}">${categoryLabel}${count}</span>
             </div>
             <div class="block-url" title="${block.url}">${displayUrl}</div>
           `;

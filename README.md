@@ -4,12 +4,12 @@ A lightweight, open-source ad blocker extension for Firefox. Van Dijk blocks ads
 
 ## Features
 
-- **Network-level blocking**: Intercepts and blocks ad requests before they load
-- **DOM-level blocking**: Removes ad elements that slip through network filters
+- **Network-level blocking**: Intercepts and blocks ad and tracker requests before they load
+- **DOM-level blocking**: Removes ad and tracker elements that slip through network filters
 - **Smart ad detection**: Detects sponsored content badges and removes parent containers
-- **Blocking method breakdown**: Track Network vs DOM-level blocks separately
+- **Separate ads and trackers**: Track and display ads vs trackers independently
 - **Recent blocks viewer**: See exactly what URLs and elements were blocked in real-time
-- **Real-time statistics**: Track blocked ads per session and total
+- **Real-time statistics**: Track blocked ads and trackers per session and total
 - **Lightweight**: Minimal performance impact
 - **Privacy-focused**: No data collection or external connections
 
@@ -46,30 +46,35 @@ van-dijk/
 
 ### Network Blocking (background.js)
 - Uses `webRequest` API to intercept network requests
-- Blocks requests matching known ad domains (Set-based O(1) lookup)
-- Blocks requests matching URL patterns (substring and regex)
+- **Separate ad and tracker blocking**:
+  - `AD_DOMAINS`, `AD_SUBSTRINGS`, `AD_PATTERNS`: Block advertising content
+  - `TRACKER_DOMAINS`, `TRACKER_SUBSTRINGS`, `TRACKER_PATTERNS`: Block analytics and tracking
+- Set-based O(1) domain lookups for performance
+- Categorizes each block as "ad" or "tracker"
 - Caches tab hostnames to reduce API calls
 - Batches storage writes every 5 seconds for performance
-- Maintains statistics on blocked requests
+- Maintains separate statistics for ads and trackers
 
 ### DOM Blocking (content.js)
 - Runs on every page load with pre-computed CSS selectors
-- Removes ad elements using two-tier approach:
-  - `AD_SELECTORS`: Generic patterns requiring validation (iframes, ad containers)
-  - `AD_MARKERS`: Explicit indicators removed immediately (data-promoted, data-is-advertising)
+- **Separate ad and tracker removal**:
+  - `AD_SELECTORS` + `AD_MARKERS`: Generic and explicit advertising indicators
+  - `TRACKER_SELECTORS` + `TRACKER_MARKERS`: Analytics scripts, tracking pixels, beacons
+- Two-tier approach for each category:
+  - Generic selectors require validation (visibility, text content)
+  - Explicit markers removed immediately (data attributes, specific tags)
 - Smart badge detection: Finds "Sponsored"/"Promoted" labels and removes parent post containers
-- Uses MutationObserver to catch dynamically loaded ads (debounced 100ms)
-- Special handling for Reddit promoted posts
+- Uses MutationObserver to catch dynamically loaded content (debounced 100ms)
+- Reports blocks separately by category (ad vs tracker)
 
 ### User Interface (popup.html/js/css)
-- Shows session and total blocked ad counts
-- Displays per-site blocking statistics
-- Shows Network (N) and DOM (D) block counts for each site
+- Shows session and total blocked counts (overall, ads, and trackers)
+- Displays per-site blocking statistics with separate ad/tracker counts
 - **Recent Blocks list**: View the last 10 blocked requests/elements with:
   - Site where the block occurred
-  - Block type (Network or DOM)
+  - Block category (Ad or Tracker)
   - Actual URL or element that was blocked
-  - Color-coded by method (red for Network, teal for DOM)
+  - Color-coded by category (red for ads, orange for trackers)
 - Allows resetting session statistics
 - Clean, modern gradient design with smooth scrolling
 
@@ -87,11 +92,20 @@ No build step required - the extension runs directly from source files.
 ### Adding New Block Rules
 
 **Network-level blocking** (edit `background.js`):
+
+*For Ads:*
 - Add domains to `AD_DOMAINS` Set for exact hostname matches (e.g., `'doubleclick.net'`)
 - Add substrings to `AD_SUBSTRINGS` array for partial matches (e.g., `'adserver'`)
 - Add regex patterns to `AD_PATTERNS` array for complex URL patterns (e.g., `/\/ads\//i`)
 
+*For Trackers:*
+- Add domains to `TRACKER_DOMAINS` Set (e.g., `'google-analytics.com'`)
+- Add substrings to `TRACKER_SUBSTRINGS` array (e.g., `'analytics'`)
+- Add regex patterns to `TRACKER_PATTERNS` array (e.g., `/\/tracking/i`)
+
 **DOM-level blocking** (edit `content.js`):
+
+*For Ads:*
 - Add generic CSS selectors to `AD_SELECTORS` array (e.g., `'[id*="ad-"]'`)
   - These require validation (visibility/text content checks)
 - Add explicit ad indicators to `AD_MARKERS` object:
@@ -100,6 +114,10 @@ No build step required - the extension runs directly from source files.
   - `attributeValues`: Attribute-value pairs for precise matching (e.g., `{'data-type': 'ad'}`)
   - These are removed immediately without additional validation
 
+*For Trackers:*
+- Add selectors to `TRACKER_SELECTORS` array (e.g., `'script[src*="analytics"]'`)
+- Add explicit tracker indicators to `TRACKER_MARKERS` object (same structure as `AD_MARKERS`)
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit pull requests or open issues.
@@ -107,15 +125,15 @@ Contributions are welcome! Please feel free to submit pull requests or open issu
 ## Roadmap
 
 - [x] Per-site statistics breakdown
-- [x] Network vs DOM blocking indicators
+- [x] Separate ads vs trackers tracking
 - [ ] Per-site enable/disable toggle
+- [ ] Toggle ads/trackers blocking independently
 - [ ] Custom filter lists support
 - [ ] Import/export settings
 - [ ] Whitelist management
 - [ ] Site-specific blocking rules
 - [ ] Advanced statistics dashboard with charts
 - [ ] Export blocked request logs
-- [ ] Firefox Add-ons store submission
 
 ## Credits
 

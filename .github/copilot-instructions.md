@@ -1,9 +1,11 @@
 # Copilot Instructions for Van Dijk Ad Blocker
 
 ## Project Overview
-Van Dijk is a browser extension that blocks ads using a two-tier approach:
+Van Dijk is a browser extension that blocks ads and trackers using a two-tier approach:
 1. **Network-level blocking** (`background.js`) - intercepts requests via `webRequest` API
-2. **DOM-level blocking** (`content.js`) - removes ad elements from the page
+2. **DOM-level blocking** (`content.js`) - removes ad/tracker elements from the page
+
+Ads and trackers are tracked and displayed separately throughout the extension.
 
 ## Architecture
 
@@ -14,13 +16,17 @@ Van Dijk is a browser extension that blocks ads using a two-tier approach:
 - **popup.html/js/css**: Browser action popup showing statistics
 
 ### Data Flow
-1. Network request → `background.js` checks URL against `AD_DOMAINS`/`AD_PATTERNS` → cancel if match
-2. Page load → `content.js` queries DOM using two-tier approach:
-   - **AD_MARKERS**: Explicit ad indicators (data-promoted, SHREDDIT-AD-POST) → remove immediately
-   - **AD_SELECTORS**: Generic patterns (iframe[src*="ads"]) → validate then remove
+1. Network request → `background.js` checks URL against ad/tracker lists:
+   - **Ads**: `AD_DOMAINS`, `AD_SUBSTRINGS`, `AD_PATTERNS`
+   - **Trackers**: `TRACKER_DOMAINS`, `TRACKER_SUBSTRINGS`, `TRACKER_PATTERNS`
+   - Categorize as "ad" or "tracker" → cancel if match
+2. Page load → `content.js` queries DOM using two-tier approach for both categories:
+   - **AD_MARKERS/TRACKER_MARKERS**: Explicit indicators → remove immediately
+   - **AD_SELECTORS/TRACKER_SELECTORS**: Generic patterns → validate then remove
 3. Badge detection → Find "Sponsored"/"Promoted" text → remove parent container
-4. MutationObserver in `content.js` watches for dynamically added ads
-5. Stats (including recentBlocks) stored in `browser.storage.local` and displayed in popup
+4. MutationObserver in `content.js` watches for dynamically added content
+5. Stats tracked separately by category (ads vs trackers) and stored in `browser.storage.local`
+6. Popup displays separate counters for ads and trackers
 
 ## Development Workflows
 
@@ -33,15 +39,22 @@ Van Dijk is a browser extension that blocks ads using a two-tier approach:
 3. Test on ad-heavy sites, check browser console for `[Van Dijk]` logs
 
 ### Adding Block Rules
-- **Domain blocking**: Add to `AD_DOMAINS` Set in `background.js`
-- **Substring patterns**: Add to `AD_SUBSTRINGS` array in `background.js`
-- **Pattern blocking**: Add regex to `AD_PATTERNS` in `background.js`
-- **Generic element blocking**: Add CSS selector to `AD_SELECTORS` in `content.js` (requires validation)
-- **Explicit ad markers**: Add to `AD_MARKERS` object in `content.js`:
-  - `tags`: HTML tag names always indicating ads (e.g., `'SHREDDIT-AD-POST'`)
-  - `attributes`: Attributes whose presence indicates ads (e.g., `'data-promoted'`)
-  - `attributeValues`: Key-value pairs for precise matching (e.g., `{'data-type': 'ad'}`)
-- **Badge detection**: The existing pattern automatically finds "Sponsored"/"Promoted" text and removes parent containers
+
+**Network-level blocking in `background.js`:**
+- **Ads**: Add to `AD_DOMAINS` Set, `AD_SUBSTRINGS` array, or `AD_PATTERNS` array
+- **Trackers**: Add to `TRACKER_DOMAINS` Set, `TRACKER_SUBSTRINGS` array, or `TRACKER_PATTERNS` array
+- Use Sets for O(1) domain lookups
+- Substrings checked against hostname and full URL
+- Regex patterns checked last (most expensive)
+
+**DOM-level blocking in `content.js`:**
+- **Ad elements**: Add to `AD_SELECTORS` (validated) or `AD_MARKERS` (immediate removal)
+- **Tracker elements**: Add to `TRACKER_SELECTORS` (validated) or `TRACKER_MARKERS` (immediate removal)
+- `AD_MARKERS`/`TRACKER_MARKERS` structure:
+  - `tags`: HTML tag names (e.g., `'SHREDDIT-AD-POST'`)
+  - `attributes`: Presence-based attributes (e.g., `'data-promoted'`)
+  - `attributeValues`: Key-value pairs (e.g., `{'data-type': 'ad'}`)
+- Badge detection automatically handles "Sponsored"/"Promoted" text
 
 ## Key Conventions
 
@@ -53,6 +66,11 @@ All console logs use `[Van Dijk]` prefix for easy filtering
 - Always use Promises with `browser.runtime.sendMessage()`, not callbacks
 - Stats persistence: batched writes every 5 seconds using `scheduleStatsSave()`
 - Tab hostname caching via `Map` to avoid redundant `browser.tabs.get()` calls
+- Stats structure separates ads and trackers:
+  - `stats.ads.session`/`stats.ads.total`
+  - `stats.trackers.session`/`stats.trackers.total`
+  - `stats.blockedBySite[site].ads`/`stats.blockedBySite[site].trackers`
+  - `recentBlocks` includes `category` field ('ad' or 'tracker')
 - `recentBlocks` array: Limited to 50 items (FIFO), includes timestamp and count for batch DOM blocks
 
 ### Content Script Patterns
@@ -62,16 +80,19 @@ All console logs use `[Van Dijk]` prefix for easy filtering
 - Debounce DOM queries (100ms) and reporting (2s) to reduce performance impact
 - Combine selectors into single `querySelectorAll()` for efficiency
 - Check MutationObserver for addedNodes before processing
-- **Two-tier DOM blocking**:
-  - `AD_MARKERS`: Explicit indicators removed immediately without validation
-  - `AD_SELECTORS`: Generic patterns validated (visibility, text checks) before removal
+- **Separate ad and tracker handling**:
+  - Maintain separate counts: `adsRemovedCount`, `trackersRemovedCount`
+  - Report with category: `domBlockReport` includes `category` field
+  - Separate removal functions: `removeAds()` and `removeTrackers()`
+- **Two-tier DOM blocking** (applies to both ads and trackers):
+  - `AD_MARKERS`/`TRACKER_MARKERS`: Explicit indicators removed immediately
+  - `AD_SELECTORS`/`TRACKER_SELECTORS`: Generic patterns validated before removal
 - **Badge detection**: Automatically searches for "Sponsored"/"Promoted" badges and removes containing post/article elements
-- **Attribute checking**: Use `AD_MARKERS.attributes`/`attributeValues` for data-attributes indicating ads
 
 ### Performance Optimizations
-- **background.js**: Use `Set` for O(1) domain lookups; cache tab hostnames; batch storage writes
-- **content.js**: Debounce ad removal; combine selectors; only process relevant mutations
-- **popup.js**: Hash-based change detection; DocumentFragment for DOM updates; reduced polling (3s)
+- **background.js**: Use `Set` for O(1) domain lookups; cache tab hostnames; batch storage writes; categorize blocks efficiently
+- **content.js**: Debounce ad/tracker removal separately; combine selectors; only process relevant mutations; separate counters
+- **popup.js**: Hash-based change detection (includes ad/tracker counts); DocumentFragment for DOM updates; reduced polling (3s)
 
 ## Firefox-Specific Details
 - Manifest v2 (not v3) for full `webRequestBlocking` support

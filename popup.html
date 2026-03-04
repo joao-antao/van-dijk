@@ -12,14 +12,32 @@
       <p class="subtitle">Ad Blocker</p>
     </div>
     
-    <div class="stats">
-      <div class="stat-item">
-        <span class="stat-label">Session Blocked</span>
-        <span class="stat-value" id="sessionBlocked">0</span>
+    <div class="stats-main">
+      <div class="stat-group">
+        <h3 class="stat-group-title ads">Ads Blocked</h3>
+        <div class="stat-row">
+          <div class="stat-item ads">
+            <span class="stat-label">Session</span>
+            <span class="stat-value" id="sessionAds">0</span>
+          </div>
+          <div class="stat-item ads">
+            <span class="stat-label">All Time</span>
+            <span class="stat-value" id="totalAds">0</span>
+          </div>
+        </div>
       </div>
-      <div class="stat-item">
-        <span class="stat-label">Total Blocked</span>
-        <span class="stat-value" id="totalBlocked">0</span>
+      <div class="stat-group">
+        <h3 class="stat-group-title trackers">Trackers Blocked</h3>
+        <div class="stat-row">
+          <div class="stat-item trackers">
+            <span class="stat-label">Session</span>
+            <span class="stat-value" id="sessionTrackers">0</span>
+          </div>
+          <div class="stat-item trackers">
+            <span class="stat-label">All Time</span>
+            <span class="stat-value" id="totalTrackers">0</span>
+          </div>
+        </div>
       </div>
     </div>
     

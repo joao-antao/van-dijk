@@ -4,6 +4,10 @@
 (function() {
   'use strict';
   
+  // ====================
+  // AD SELECTORS
+  // ====================
+  
   // Selectors for common ad elements (generic patterns that need validation)
   const AD_SELECTORS = [
     '[id*="ad-"]',
@@ -28,24 +32,61 @@
     attributeValues: { 'data-type': 'ad' }
   };
   
-  // Pre-compute marker selectors and combined selector for performance
-  const MARKER_SELECTORS = [
+  // ====================
+  // TRACKER SELECTORS
+  // ====================
+  
+  // Selectors for tracking elements
+  const TRACKER_SELECTORS = [
+    'script[src*="google-analytics"]',
+    'script[src*="googletagmanager"]',
+    'script[src*="analytics.js"]',
+    'script[src*="ga.js"]',
+    'img[src*="/track"]',
+    'img[src*="/pixel"]',
+    'img[src*="/beacon"]',
+    'iframe[src*="analytics"]',
+    '[class*="tracking"]',
+    '[id*="tracking"]'
+  ];
+  
+  // Tracker markers - explicit indicators of tracking scripts/pixels
+  const TRACKER_MARKERS = {
+    tags: [],
+    attributes: ['data-tracking', 'data-analytics'],
+    attributeValues: { 'data-type': 'tracking' }
+  };
+  
+  // Pre-compute marker selectors and combined selectors for performance
+  const AD_MARKER_SELECTORS = [
     ...AD_MARKERS.tags.map(tag => tag.toLowerCase()),
     ...AD_MARKERS.attributes.map(attr => `[${attr}]`),
     ...Object.entries(AD_MARKERS.attributeValues).map(([attr, value]) => `[${attr}="${value}"]`)
   ];
-  const COMBINED_SELECTOR = [...AD_SELECTORS, ...MARKER_SELECTORS].join(', ');
-  const MARKER_ATTRIBUTE_ENTRIES = Object.entries(AD_MARKERS.attributeValues);
   
-  let removedCount = 0;
+  const TRACKER_MARKER_SELECTORS = [
+    ...TRACKER_MARKERS.tags.map(tag => tag.toLowerCase()),
+    ...TRACKER_MARKERS.attributes.map(attr => `[${attr}]`),
+    ...Object.entries(TRACKER_MARKERS.attributeValues).map(([attr, value]) => `[${attr}="${value}"]`)
+  ];
+  
+  const AD_COMBINED_SELECTOR = [...AD_SELECTORS, ...AD_MARKER_SELECTORS].join(', ');
+  const TRACKER_COMBINED_SELECTOR = [...TRACKER_SELECTORS, ...TRACKER_MARKER_SELECTORS].join(', ');
+  
+  const AD_MARKER_ATTRIBUTE_ENTRIES = Object.entries(AD_MARKERS.attributeValues);
+  const TRACKER_MARKER_ATTRIBUTE_ENTRIES = Object.entries(TRACKER_MARKERS.attributeValues);
+  
+  let adsRemovedCount = 0;
+  let trackersRemovedCount = 0;
   let adRemovalTimer = null;
+  let trackerRemovalTimer = null;
   
   // Remove ad elements from the DOM (optimized and generic)
   function removeAds() {
     let removed = 0;
     
     try {
-      const elements = document.querySelectorAll(COMBINED_SELECTOR);
+      const elements = document.querySelectorAll(AD_COMBINED_SELECTOR);
       
       elements.forEach(el => {
         // Skip if already being removed
@@ -61,7 +102,7 @@
         // 2. Remove elements with explicit ad attributes/tags
         if (AD_MARKERS.tags.includes(el.tagName) ||
             AD_MARKERS.attributes.some(attr => el.hasAttribute(attr)) ||
-            MARKER_ATTRIBUTE_ENTRIES.some(([attr, value]) => el.getAttribute(attr) === value)) {
+            AD_MARKER_ATTRIBUTE_ENTRIES.some(([attr, value]) => el.getAttribute(attr) === value)) {
           el.remove();
           removed++;
           return;
@@ -93,9 +134,51 @@
         }
       });
       
-      removedCount += removed;
+      adsRemovedCount += removed;
     } catch (e) {
-      console.debug('[Van Dijk] Selector error:', e);
+      console.debug('[Van Dijk] Ad selector error:', e);
+    }
+  }
+  
+  // Remove tracker elements from the DOM
+  function removeTrackers() {
+    let removed = 0;
+    
+    try {
+      const elements = document.querySelectorAll(TRACKER_COMBINED_SELECTOR);
+      
+      elements.forEach(el => {
+        // Skip if already being removed
+        if (!el.parentNode) return;
+        
+        // 1. Remove tracking scripts/iframes immediately
+        if (el.tagName === 'SCRIPT' || el.tagName === 'IFRAME') {
+          el.remove();
+          removed++;
+          return;
+        }
+        
+        // 2. Remove tracking pixels (1x1 images)
+        if (el.tagName === 'IMG') {
+          if (el.width <= 1 && el.height <= 1) {
+            el.remove();
+            removed++;
+            return;
+          }
+        }
+        
+        // 3. Remove elements with explicit tracker attributes
+        if (TRACKER_MARKERS.attributes.some(attr => el.hasAttribute(attr)) ||
+            TRACKER_MARKER_ATTRIBUTE_ENTRIES.some(([attr, value]) => el.getAttribute(attr) === value)) {
+          el.remove();
+          removed++;
+          return;
+        }
+      });
+      
+      trackersRemovedCount += removed;
+    } catch (e) {
+      console.debug('[Van Dijk] Tracker selector error:', e);
     }
   }
   
@@ -109,26 +192,56 @@
     }, 100);
   }
   
+  // Debounced tracker removal to avoid excessive calls
+  function scheduleTrackerRemoval() {
+    if (trackerRemovalTimer) return;
+    
+    trackerRemovalTimer = setTimeout(() => {
+      removeTrackers();
+      trackerRemovalTimer = null;
+    }, 100);
+  }
+  
   // Report DOM blocks to background
   function reportBlocks() {
-    if (removedCount > 0) {
+    const hostname = window.location.hostname;
+    
+    // Report ads
+    if (adsRemovedCount > 0) {
       try {
-        const hostname = window.location.hostname;
         browser.runtime.sendMessage({
           action: 'domBlockReport',
           site: hostname,
-          count: removedCount
+          count: adsRemovedCount,
+          category: 'ad'
         }).catch(() => {});
-        removedCount = 0;
+        adsRemovedCount = 0;
       } catch (e) {
-        console.error('[Van Dijk] Error reporting blocks:', e);
-        removedCount = 0; // Reset count even on error
+        console.error('[Van Dijk] Error reporting ad blocks:', e);
+        adsRemovedCount = 0;
+      }
+    }
+    
+    // Report trackers
+    if (trackersRemovedCount > 0) {
+      try {
+        browser.runtime.sendMessage({
+          action: 'domBlockReport',
+          site: hostname,
+          count: trackersRemovedCount,
+          category: 'tracker'
+        }).catch(() => {});
+        trackersRemovedCount = 0;
+      } catch (e) {
+        console.error('[Van Dijk] Error reporting tracker blocks:', e);
+        trackersRemovedCount = 0;
       }
     }
   }
   
   // Initial removal
   removeAds();
+  removeTrackers();
   reportBlocks();
   
   // Watch for dynamically added ads (optimized)
@@ -141,6 +254,7 @@
     
     if (hasAddedNodes) {
       scheduleAdRemoval();
+      scheduleTrackerRemoval();
       
       // Debounce reporting to avoid too many messages
       clearTimeout(reportTimer);

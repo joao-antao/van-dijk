@@ -1,7 +1,11 @@
 // Van Dijk Ad Blocker - Background Script
 // Handles network request blocking and rule management
 
-// Common ad domains and patterns (using Set for O(1) lookup)
+// ====================
+// AD BLOCKING RULES
+// ====================
+
+// Common ad domains (using Set for O(1) lookup)
 const AD_DOMAINS = new Set([
   'doubleclick.net',
   'googleadservices.com',
@@ -23,17 +27,15 @@ const AD_DOMAINS = new Set([
   'admob.com'
 ]);
 
-// Substring patterns for hostname matching
-const AD_SUBSTRINGS = ['adsense', 'adserver', 'analytics', 'track', 'telemetry', 'doubleclick', 'promoted'];
+// Ad-related substring patterns
+const AD_SUBSTRINGS = ['adsense', 'adserver', 'doubleclick', 'promoted', 'banner', 'sponsor'];
 
-// URL patterns to block
+// Ad URL patterns
 const AD_PATTERNS = [
   /\/ads?\//i,
   /\/ad[sv]ertis/i,
   /\/banner/i,
   /\/sponsor/i,
-  /\/tracking/i,
-  /\/analytics/i,
   /\.doubleclick\./i,
   /googlesyndication/i,
   /googleadservices/i,
@@ -43,8 +45,60 @@ const AD_PATTERNS = [
   /[?&]promoted=/i
 ];
 
+// ====================
+// TRACKER BLOCKING RULES
+// ====================
+
+// Common tracking domains
+const TRACKER_DOMAINS = new Set([
+  'google-analytics.com',
+  'googletagmanager.com',
+  'google-analytics.bi',
+  'hotjar.com',
+  'mouseflow.com',
+  'luckyorange.com',
+  'mixpanel.com',
+  'segment.com',
+  'amplitude.com',
+  'fullstory.com',
+  'loggly.com',
+  'bugsnag.com',
+  'sentry.io',
+  'newrelic.com',
+  'quantserve.com',
+  'scorecardresearch.com',
+  'chartbeat.com',
+  'crazyegg.com',
+  'kissmetrics.com',
+  'heap.io'
+]);
+
+// Tracker-related substring patterns
+const TRACKER_SUBSTRINGS = ['analytics', 'track', 'telemetry', 'beacon', 'pixel', 'collect'];
+
+// Tracker URL patterns
+const TRACKER_PATTERNS = [
+  /\/tracking/i,
+  /\/analytics/i,
+  /\/telemetry/i,
+  /\/collect\?/i,
+  /\/beacon/i,
+  /\/pixel\./i,
+  /google-analytics/i,
+  /googletagmanager/i,
+  /[?&]utm_/i
+];
+
 // Statistics
 let stats = {
+  ads: {
+    total: 0,
+    session: 0
+  },
+  trackers: {
+    total: 0,
+    session: 0
+  },
   totalBlocked: 0,
   sessionBlocked: 0,
   enabledSites: {},
@@ -77,49 +131,97 @@ browser.storage.local.get(['stats']).then((result) => {
   if (result.stats) {
     stats = Object.assign({}, stats, result.stats);
     // Ensure new properties exist
+    if (!stats.ads) stats.ads = { total: 0, session: 0 };
+    if (!stats.trackers) stats.trackers = { total: 0, session: 0 };
     if (!stats.blockedBySite) stats.blockedBySite = {};
     if (!stats.recentBlocks) stats.recentBlocks = [];
   }
   console.log('[Van Dijk] Stats loaded:', stats);
 });
 
-// Check if URL should be blocked (optimized)
-function shouldBlockUrl(url) {
+// Check if URL is an ad (returns true if ad detected)
+function isAdUrl(url, hostname) {
+  // Fast Set lookup for exact domain matches
+  if (AD_DOMAINS.has(hostname)) {
+    return true;
+  }
+  
+  // Check if any ad domain is in hostname
+  for (const domain of AD_DOMAINS) {
+    if (hostname.includes(domain)) {
+      return true;
+    }
+  }
+  
+  // Check substring patterns
+  for (const substring of AD_SUBSTRINGS) {
+    if (hostname.includes(substring) || url.includes(substring)) {
+      return true;
+    }
+  }
+  
+  // Check URL patterns (regex is slower, check last)
+  for (const pattern of AD_PATTERNS) {
+    if (pattern.test(url)) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+// Check if URL is a tracker (returns true if tracker detected)
+function isTrackerUrl(url, hostname) {
+  // Fast Set lookup for exact domain matches
+  if (TRACKER_DOMAINS.has(hostname)) {
+    return true;
+  }
+  
+  // Check if any tracker domain is in hostname
+  for (const domain of TRACKER_DOMAINS) {
+    if (hostname.includes(domain)) {
+      return true;
+    }
+  }
+  
+  // Check substring patterns
+  for (const substring of TRACKER_SUBSTRINGS) {
+    if (hostname.includes(substring) || url.includes(substring)) {
+      return true;
+    }
+  }
+  
+  // Check URL patterns (regex is slower, check last)
+  for (const pattern of TRACKER_PATTERNS) {
+    if (pattern.test(url)) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+// Categorize and check if URL should be blocked (returns category or null)
+function categorizeBlockedUrl(url) {
   try {
     const urlObj = new URL(url);
     const hostname = urlObj.hostname;
     
-    // Fast Set lookup for exact domain matches
-    if (AD_DOMAINS.has(hostname)) {
-      return true;
+    // Check ads first (more specific)
+    if (isAdUrl(url, hostname)) {
+      return 'ad';
     }
     
-    // Check if any ad domain is in hostname
-    for (const domain of AD_DOMAINS) {
-      if (hostname.includes(domain)) {
-        return true;
-      }
-    }
-    
-    // Check substring patterns
-    for (const substring of AD_SUBSTRINGS) {
-      if (hostname.includes(substring) || url.includes(substring)) {
-        return true;
-      }
-    }
-    
-    // Check URL patterns (regex is slower, check last)
-    for (const pattern of AD_PATTERNS) {
-      if (pattern.test(url)) {
-        return true;
-      }
+    // Then check trackers
+    if (isTrackerUrl(url, hostname)) {
+      return 'tracker';
     }
   } catch (e) {
     // Invalid URL
-    return false;
+    return null;
   }
   
-  return false;
+  return null;
 }
 
 // Block network requests
@@ -128,7 +230,18 @@ browser.webRequest.onBeforeRequest.addListener(
     // Check if blocking is enabled for this tab
     const tabId = details.tabId;
     
-    if (shouldBlockUrl(details.url)) {
+    const category = categorizeBlockedUrl(details.url);
+    if (category) {
+      // Update category-specific stats
+      if (category === 'ad') {
+        stats.ads.total++;
+        stats.ads.session++;
+      } else if (category === 'tracker') {
+        stats.trackers.total++;
+        stats.trackers.session++;
+      }
+      
+      // Update total stats
       stats.totalBlocked++;
       stats.sessionBlocked++;
       
@@ -137,14 +250,14 @@ browser.webRequest.onBeforeRequest.addListener(
         // Check cache first
         const cachedHostname = tabHostnameCache.get(tabId);
         if (cachedHostname) {
-          updateSiteStats(cachedHostname, details.url);
+          updateSiteStats(cachedHostname, details.url, category);
         } else {
           browser.tabs.get(tabId).then((tab) => {
             try {
               const siteUrl = new URL(tab.url);
               const site = siteUrl.hostname;
               tabHostnameCache.set(tabId, site);
-              updateSiteStats(site, details.url);
+              updateSiteStats(site, details.url, category);
             } catch (e) {
               console.error('[Van Dijk] Error tracking block:', e);
             }
@@ -173,11 +286,17 @@ browser.webRequest.onBeforeRequest.addListener(
 );
 
 // Helper function to update site statistics
-function updateSiteStats(site, url) {
+function updateSiteStats(site, url, category) {
   if (!stats.blockedBySite[site]) {
-    stats.blockedBySite[site] = { network: 0, dom: 0 };
+    stats.blockedBySite[site] = { ads: 0, trackers: 0 };
   }
-  stats.blockedBySite[site].network++;
+  
+  // Update category count
+  if (category === 'ad') {
+    stats.blockedBySite[site].ads++;
+  } else if (category === 'tracker') {
+    stats.blockedBySite[site].trackers++;
+  }
   
   // Add to recent blocks (limited to 50)
   if (stats.recentBlocks.length >= 50) {
@@ -186,7 +305,7 @@ function updateSiteStats(site, url) {
   stats.recentBlocks.unshift({
     site: site,
     url: url,
-    method: 'Network',
+    category: category,
     time: Date.now()
   });
   
@@ -209,6 +328,8 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'getStats') {
     sendResponse(stats);
   } else if (message.action === 'resetStats') {
+    stats.ads.session = 0;
+    stats.trackers.session = 0;
     stats.sessionBlocked = 0;
     stats.blockedBySite = {};
     stats.recentBlocks = [];
@@ -216,11 +337,24 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ success: true });
   } else if (message.action === 'domBlockReport') {
     // Content script reporting DOM removals
-    const { site, count } = message;
+    const { site, count, category } = message;
+    
     if (!stats.blockedBySite[site]) {
-      stats.blockedBySite[site] = { network: 0, dom: 0 };
+      stats.blockedBySite[site] = { ads: 0, trackers: 0 };
     }
-    stats.blockedBySite[site].dom += count;
+    
+    // Update category-specific stats
+    if (category === 'ad') {
+      stats.blockedBySite[site].ads += count;
+      stats.ads.total += count;
+      stats.ads.session += count;
+    } else if (category === 'tracker') {
+      stats.blockedBySite[site].trackers += count;
+      stats.trackers.total += count;
+      stats.trackers.session += count;
+    }
+    
+    // Update total stats
     stats.totalBlocked += count;
     stats.sessionBlocked += count;
     
@@ -230,8 +364,8 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
     stats.recentBlocks.unshift({
       site: site,
-      url: site,
-      method: 'DOM',
+      url: `${count} ${category}${count > 1 ? 's' : ''}`,
+      category: category,
       count: count,
       time: Date.now()
     });
@@ -244,6 +378,8 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Reset session stats on browser startup
 browser.runtime.onStartup.addListener(() => {
+  stats.ads.session = 0;
+  stats.trackers.session = 0;
   stats.sessionBlocked = 0;
   stats.blockedBySite = {};
   stats.recentBlocks = [];
