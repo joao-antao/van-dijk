@@ -38,6 +38,7 @@
   
   // Selectors for tracking elements
   const TRACKER_SELECTORS = [
+    // General analytics
     'script[src*="google-analytics"]',
     'script[src*="googletagmanager"]',
     'script[src*="analytics.js"]',
@@ -47,7 +48,22 @@
     'img[src*="/beacon"]',
     'iframe[src*="analytics"]',
     '[class*="tracking"]',
-    '[id*="tracking"]'
+    '[id*="tracking"]',
+    // Social media tracking
+    'script[src*="connect.facebook.net"]',
+    'script[src*="fbevents"]',
+    'script[src*="analytics.twitter.com"]',
+    'script[src*="static.ads-twitter.com"]',
+    'script[src*="analytics.tiktok.com"]',
+    'script[src*="ct.pinterest.com"]',
+    'script[src*="snap.licdn.com"]',
+    'script[src*="events.reddit.com"]',
+    'img[src*="facebook.com/tr"]',
+    'img[src*="t.co/i/adsct"]',
+    'iframe[src*="facebook.com/plugins"]',
+    'iframe[src*="platform.twitter.com"]',
+    '[id*="fb-root"]',
+    '[id*="twitter-widget"]'
   ];
   
   // Tracker markers - explicit indicators of tracking scripts/pixels

@@ -51,6 +51,7 @@ const AD_PATTERNS = [
 
 // Common tracking domains
 const TRACKER_DOMAINS = new Set([
+  // Analytics platforms
   'google-analytics.com',
   'googletagmanager.com',
   'google-analytics.bi',
@@ -70,11 +71,32 @@ const TRACKER_DOMAINS = new Set([
   'chartbeat.com',
   'crazyegg.com',
   'kissmetrics.com',
-  'heap.io'
+  'heap.io',
+  // Social media trackers
+  'connect.facebook.net',
+  'analytics.facebook.com',
+  'pixel.facebook.com',
+  'an.facebook.com',
+  'analytics.twitter.com',
+  'static.ads-twitter.com',
+  'analytics.tiktok.com',
+  'ads.tiktok.com',
+  'analytics.pinterest.com',
+  'ct.pinterest.com',
+  'log.pinterest.com',
+  'trk.pinterest.com',
+  'ads.pinterest.com',
+  'snap.licdn.com',
+  'px.ads.linkedin.com',
+  'analytics.pointdrive.linkedin.com',
+  'alb.reddit.com',
+  'events.reddit.com',
+  'redditmedia.com',
+  'i.instagram.com'
 ]);
 
 // Tracker-related substring patterns
-const TRACKER_SUBSTRINGS = ['analytics', 'track', 'telemetry', 'beacon', 'pixel', 'collect'];
+const TRACKER_SUBSTRINGS = ['analytics', 'track', 'telemetry', 'beacon', 'pixel', 'collect', 'fbevents', 'fbq'];
 
 // Tracker URL patterns
 const TRACKER_PATTERNS = [
@@ -86,7 +108,17 @@ const TRACKER_PATTERNS = [
   /\/pixel\./i,
   /google-analytics/i,
   /googletagmanager/i,
-  /[?&]utm_/i
+  /[?&]utm_/i,
+  // Social media tracking patterns
+  /facebook\.com\/tr\//i,
+  /\/fbevents/i,
+  /\/fbq/i,
+  /twitter\.com\/i\/adsct/i,
+  /analytics\.tiktok/i,
+  /\/events\.reddit/i,
+  /linkedin\.com\/px\//i,
+  /pinterest\.com\/ct\//i,
+  /\/conversion/i
 ];
 
 // Statistics
